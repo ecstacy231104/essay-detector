@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Essay AI Detector</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f1117; color: #e6e6e6;
+    margin: 0; padding: 40px 20px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  p.sub { color: #9aa0ab; margin-top: 0; margin-bottom: 28px; }
+  textarea {
+    width: 100%; min-height: 220px; padding: 14px;
+    background: #171a21; border: 1px solid #2a2e38; border-radius: 10px;
+    color: #e6e6e6; font-size: 0.95rem; resize: vertical;
+  }
+  button {
+    margin-top: 14px; padding: 10px 22px; border: none; border-radius: 8px;
+    background: #4ade80; color: #0f1117; font-weight: 600; cursor: pointer;
+    font-size: 0.95rem;
+  }
+  button:hover { background: #3fce70; }
+  .summary {
+    margin-top: 32px; padding: 18px; background: #171a21;
+    border-radius: 10px; border: 1px solid #2a2e38;
+  }
+  .summary h2 { font-size: 1.1rem; margin-top: 0; }
+  .metric-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 10px; }
+  .metric { font-size: 0.85rem; color: #9aa0ab; }
+  .metric b { color: #e6e6e6; display: block; font-size: 1.1rem; }
+  .essay-view { margin-top: 24px; line-height: 1.9; font-size: 1rem; }
+  .sentence { padding: 2px 3px; border-radius: 4px; }
+  .flagged { background: rgba(248, 113, 113, 0.18); border-bottom: 2px solid #f87171; cursor: help; }
+  .reasons {
+    margin-top: 24px; font-size: 0.88rem;
+  }
+  .reasons h3 { font-size: 0.95rem; color: #9aa0ab; margin-bottom: 8px; }
+  .reason-item {
+    padding: 10px 12px; background: #171a21; border-radius: 8px;
+    margin-bottom: 8px; border-left: 3px solid #f87171;
+  }
+  .reason-item .snippet { color: #9aa0ab; font-size: 0.82rem; margin-bottom: 4px; }
+  .disclaimer {
+    margin-top: 32px; padding: 14px 16px; background: #1a1710;
+    border: 1px solid #4a3a1a; border-radius: 8px; font-size: 0.83rem; color: #d9b96a;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Essay AI Detector</h1>
+  <p class="sub">Paste an admissions essay. Flagged sentences show the specific measurable signals that triggered them — not a single confidence percentage.</p>
+
+  <form method="POST">
+    <textarea name="essay" placeholder="Paste the essay here...">{{ essay_text }}</textarea><br>
+    <button type="submit">Analyze</button>
+  </form>
+
+  {% if result %}
+    <div class="summary">
+      <h2>Essay-wide measurements</h2>
+      <div class="metric-row">
+        <div class="metric"><b>{{ (result.overall_flagged_fraction * 100) | round(1) }}%</b>of sentences flagged</div>
+        <div class="metric"><b>{{ result.length_cv | round(2) }}</b>sentence-length variation (higher = more human-like)</div>
+        <div class="metric"><b>{{ result.transition_density | round(2) }}</b>stock transitions per 100 words</div>
+        <div class="metric"><b>{{ result.avg_local_ttr | round(2) }}</b>average local vocabulary variety</div>
+      </div>
+    </div>
+
+    <div class="essay-view">
+      {% for s in result.sentences %}
+        <span class="sentence {{ 'flagged' if s.flagged else '' }}"
+              {% if s.flagged %}title="{{ s.reasons | join(' | ') }}"{% endif %}>{{ s.text }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="reasons">
+      <h3>Flagged sentences and why</h3>
+      {% for s in result.sentences %}
+        {% if s.flagged %}
+          <div class="reason-item">
+            <div class="snippet">"{{ s.text[:90] }}{{ '...' if s.text|length > 90 else '' }}"</div>
+            {% for r in s.reasons %}
+              <div>&bull; {{ r }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if result.overall_flagged_fraction == 0 %}
+        <p style="color:#9aa0ab;">No sentences met the flagging threshold (2+ independent signals) in this essay.</p>
+      {% endif %}
+    </div>
+
+    <div class="disclaimer">
+      <strong>Honest limitation:</strong> this detector flags statistical patterns associated
+      with AI-generated prose (uniform sentence length, stock transitions, low local vocabulary
+      variety). It is not a certainty measure. Confident, simple, or repetitive human writing —
+      including from non-native English writers — can trigger the same signals. Treat flags as a
+      starting point for closer reading, not a verdict.
+    </div>
+  {% endif %}
+</div>
+</body>
+</html>
